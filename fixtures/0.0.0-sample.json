@@ -94,7 +94,7 @@
         "account": "00124164512874"
     },
     "beneficiary": {
-        "distribution": 1,
+        "distribution": "1",
         "aveRatio": "100",
         "relationshipValue": "其他",
         "relationshipValueDesc": "Other",
@@ -112,7 +112,7 @@
         "cellPhoneType": "0",
         "cellPhoneNumber": "0910123456",
         "assignInsurance": "100",
-        "quotaInsurance": "12000"
+        "quotaInsurance": "120000"
     },
     "sickInfoList" : {
         "sickName": "感冒發燒",
