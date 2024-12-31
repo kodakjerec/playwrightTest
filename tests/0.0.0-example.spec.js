@@ -833,6 +833,7 @@ test.describe('測試連線', () => {
 
         const pdfCounts = await page.locator('tbody > tr').count()
         for(let i=0;i<pdfCounts;i++) {
+            // 已經預覽的時間
             const pdfViewedTime = await page.locator('tbody > tr').nth(i).locator('td').nth(2).textContent()
             if (pdfViewedTime.trim()==='') {
                 // 按下按鈕
@@ -910,6 +911,107 @@ test.describe('測試連線', () => {
             page.waitForResponse(res => res.url().includes('flow-step') && res.status() === 200)
             , page.locator('button.btn.btn-primary').click()
         ])
+        await page.waitForTimeout(shortSleep)
+    })
+
+    test('上傳文件', async () => {
+        if (!(await mainStepIsMyTurn(page, 3))) { expect(true).toBe(true); return }
+
+        // 下一步
+        await page.waitForTimeout(shortSleep)
+        await Promise.all([
+            page.waitForResponse(res => res.url().includes('flow-step') && res.status() === 200)
+            , page.locator('button.btn.btn-primary').click()
+        ])
+        await page.waitForTimeout(shortSleep)
+    })
+    
+    test('確認投保-預覽', async () => {
+        if (!(await mainStepIsMyTurn(page, 4))) { expect(true).toBe(true); return }
+        // 檢查是否已做完
+        const targetPage = await page.locator('page__sidebar-items>div').nth(0)
+        const targetClasslist = await targetPage.getAttribute('class')
+        if (targetClasslist.includes('timeline-item--complete')) { expect(true).toBe(true); return }
+
+        // 預覽
+        const pdfCounts = await page.locator('tbody > tr').count()
+        for(let i=0;i<pdfCounts;i++) {
+            // 已經預覽的時間
+            const pdfViewedTime = await page.locator('tbody > tr').nth(i).locator('td').nth(2).textContent()
+            if (pdfViewedTime.trim()==='') {
+                // 按下按鈕
+                const viewPdfBtn = await page.locator('tbody > tr > td > button.btn-outline-info').nth(i)
+                await Promise.all([
+                    page.waitForResponse(res => res.url().includes('file') && res.status() === 200)
+                    , await viewPdfBtn.click()
+                ])
+                await page.waitForTimeout(shortSleep)
+
+                await pdfNextStepLoop(page)
+                
+                await page.waitForTimeout(shortSleep)
+
+                // 是否預覽下一份文件, 選否
+                await clickDialog(page, false)
+            }
+        }
+
+        // 下一步
+        await page.waitForTimeout(shortSleep)
+        await page.locator('button.btn.btn-primary').click()
+        await page.waitForTimeout(shortSleep)
+    })
+    
+    test('確認投保-簽名', async () => {
+        if (!(await mainStepIsMyTurn(page, 4))) { expect(true).toBe(true); return }
+        // 檢查是否已做完
+        const targetPage = await page.locator('page__sidebar-items>div').nth(1)
+        const targetClasslist = await targetPage.getAttribute('class')
+        if (targetClasslist.includes('timeline-item--complete')) { expect(true).toBe(true); return }
+
+        // 分頁
+        const tabCounts = await page.locator('.mdc-tab').count()
+        for (let i=0;i<tabCounts;i++) {
+            const tab = await page.locator('.mdc-tab').nth(i)
+            await tab.click()
+
+            // 每個簽名
+            const signaturesBody = await page.locator('tbody')
+            const signatureCounts = await signaturesBody.locator('div.signature__img').count()
+            for (let j=0;j<signatureCounts;j++) {
+                const divSignature = await signaturesBody.locator('div.signature__img').nth(j)
+                const isDivExist = await divSignature.isVisible()
+                if (isDivExist) {
+                    // 有icon表示簽名過不再簽
+                    const isSignatured = await divSignature.locator('div.signature__icon').isVisible()
+                    if (!isSignatured) {
+                        await divSignature.click()
+
+                        // 開始簽名
+                        await page.waitForTimeout(shortSleep)
+                        const pad = await page.locator('canvas.signature-pad__pad').boundingBox()
+                        let nowX = pad.width/2
+                        let nowY = pad.height/2
+                        for (let k=0;k<5;k++) {
+                            await page.mouse.move(nowX, nowY)
+                            await page.mouse.down()
+                            nowX = pad.x + Math.random()*pad.width
+                            nowY = pad.y + Math.random()*pad.height
+                            await page.mouse.move(nowX, nowY, { steps: 10})
+                            await page.mouse.up()
+                        }
+
+                        // 送出
+                        await page.locator('.signature-pad__footer-btn--confirm').click()
+                        await page.waitForTimeout(shortSleep)
+                    }
+                }
+            }
+        }
+        
+        // 下一步
+        await page.waitForTimeout(shortSleep)
+        await page.locator('button.btn.btn-primary').click()
         await page.waitForTimeout(shortSleep)
     })
 })

@@ -23,7 +23,6 @@ async function pdfNextStepLoop(page) {
                 // Execute JavaScript to scroll to the bottom of the page
                 await page.evaluate(() => {
                     const height = document.querySelector('div.modal-body').scrollHeight
-                    console.log(height)
                     document.querySelector('div.modal-body').scrollTo({ left: 0, top: height, behavior: "smooth" });
                 }); // get the page height
 
