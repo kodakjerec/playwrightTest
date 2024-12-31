@@ -26,10 +26,8 @@ pipeline {
         }
 
         stage('Run Tests') {
-            steps {
-                // 執行 Playwright 測試
-                sh 'npx playwright test  tests/0.0.0-example.spec.js'
-            }
+            // 執行 Playwright 測試
+            sh 'npx playwright test  tests/0.0.0-example.spec.js'
         }
     }
 
