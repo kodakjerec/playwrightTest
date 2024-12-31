@@ -19,15 +19,19 @@ pipeline {
 
     stages {
         stage('Install Dependencies') {
-            // 安裝專案依賴
+            steps {
+                // 安裝專案依賴
                 sh 'npm install'
                 // 安裝 Playwright 瀏覽器
                 sh 'npx playwright install --with-deps'
+            }
         }
 
         stage('Run Tests') {
-            // 執行 Playwright 測試
-            sh 'npx playwright test  tests/0.0.0-example.spec.js'
+            steps {
+                // 執行 Playwright 測試
+                sh 'npx playwright test  tests/0.0.0-example.spec.js'
+            }
         }
     }
 
