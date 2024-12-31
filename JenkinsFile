@@ -1,77 +1,9 @@
-pipeline {
-    agent {
-        // this image provides everything needed to run Cypress
-        docker {
-            image 'cypress/base:22.11.0'
-            args '-u root:root'
-            reuseNode true
-        }
-    }
-    tools {
-        nodejs 'nodejs 23.0.0'
-    }
-
-    environment {
-        HOME = '.'
-        USERNAME = 'kodakjerec'
-        PASSWORD = 'ru03dk4286'
-    }
-
+agent { docker { image 'mcr.microsoft.com/playwright:v1.49.1-noble' } }
     stages {
-        stage('Install Dependencies') {
+        stage('e2e-tests') {
             steps {
-                sh 'npm i'
-            }
-        }
-
-        stage('Install playwright browser') {
-            steps {
-                sh 'npx playwright install'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                script {
-                    try {
-                        // 執行 Playwright 測試
-                        sh 'npx playwright test tests/0.0.0-example.spec.js'
-                    } catch (Exception e) {
-                        // 測試失敗時，記錄錯誤但不中止 pipeline
-                        currentBuild.result = 'FAILURE'
-                        error('Playwright tests failed')
-                    } finally {
-                        // 無論成功失敗都保存測試結果
-                        archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
-                        // 保存 HTML 報告
-                        publishHTML(target: [
-                            allowMissing: false,
-                            alwaysLinkToLastBuild: true,
-                            keepAll: true,
-                            reportDir: 'playwright-report',
-                            reportFiles: 'index.html',
-                            reportName: 'Playwright Report'
-                        ])
-                        // 發布 JUnit 報告
-                        junit 'test-results/junit-report.xml'
-                    }
-                }
+            sh 'npm ci'
+            sh 'npx playwright test tests/0.0.0-example.spec.js'
             }
         }
     }
-
-    post {
-        always {
-            // 清理工作空間
-            cleanWs()
-        }
-        failure {
-            // 測試失敗時發送郵件通知
-            emailext (
-                subject: "Pipeline Failed: ${currentBuild.fullDisplayName}",
-                body: "Pipeline failed. Check the test results at: ${BUILD_URL}",
-                recipientProviders: [[$class: 'DevelopersRecipientProvider']]
-            )
-        }
-    }
-}
