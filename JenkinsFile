@@ -24,6 +24,12 @@ pipeline {
             }
         }
 
+        stage('Install playwright browser') {
+            steps {
+                sh 'npx playwright install'
+            }
+        }
+
         stage('Run Tests') {
             steps {
                 script {
