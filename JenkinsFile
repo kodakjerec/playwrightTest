@@ -18,14 +18,9 @@ pipeline {
     }
 
     stages {
-        stage('Setup') {
+        stage('Install Dependencies') {
             steps {
-                // 安裝 Node.js
-                nodejs(nodeJSInstallationName: 'Node ${NODE_VERSION}') {
-                    sh 'npm install'
-                    // 安裝 Playwright 的依賴
-                    sh 'npx playwright install --with-deps'
-                }
+                sh 'npm i'
             }
         }
 
