@@ -11,7 +11,7 @@ const {
 } = require('./Commands')
 
 import { solver } from '../support/CAPTCHAsolver'
-import testData from '../fixtures/0.0.0-sample.json'
+import testData from '../fixtures/1.0.0-UAT2.json'
 
 /** 本次測試時間 */
 const now = new Date()
