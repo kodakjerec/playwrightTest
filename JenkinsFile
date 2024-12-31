@@ -1,9 +1,49 @@
-agent { docker { image 'mcr.microsoft.com/playwright:v1.49.1-noble' } }
+pipeline {
+    agent {
+        // this image provides everything needed to run Cypress
+        docker {
+            image 'mcr.microsoft.com/playwright:v1.49.1-noble'
+            args '-u root:root'
+            reuseNode true
+        }
+    }
+    tools {
+        nodejs 'nodejs 23.0.0'
+    }
+
+    environment {
+        HOME = '.'
+        USERNAME = 'kodakjerec'
+        PASSWORD = 'ru03dk4286'
+    }
+
     stages {
-        stage('e2e-tests') {
+        stage('Install Dependencies') {
+            // 安裝專案依賴
+                sh 'npm install'
+                // 安裝 Playwright 瀏覽器
+                sh 'npx playwright install --with-deps'
+        }
+
+        stage('Run Tests') {
             steps {
-            sh 'npm ci'
-            sh 'npx playwright test tests/0.0.0-example.spec.js'
+                // 執行 Playwright 測試
+                sh 'npx playwright test  tests/0.0.0-example.spec.js'
             }
         }
     }
+
+    post {
+        always {
+            // 保存測試報告
+            publishHTML(target: [
+                allowMissing: false,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'playwright-report',
+                reportFiles: 'index.html',
+                reportName: 'Playwright Report'
+            ])
+        }
+    }
+}
