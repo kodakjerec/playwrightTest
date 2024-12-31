@@ -63,7 +63,7 @@ async function mainStepIsMyTurn(page, mainStep) {
      * 4-確認投保
      */
     let nowMainStep = -1
-    for(let i=0; i<4; i++) {
+    for(let i=0; i<5; i++) {
         const subDiv = await page.locator(`div.swiper-wrapper > div[data-swiper-slide-index="${i}"].step__item--last`)
         const isExist = await subDiv.isVisible()
 

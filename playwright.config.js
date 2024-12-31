@@ -20,19 +20,23 @@ module.exports = defineConfig({
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'https://mpos.transglobe.com.tw/',
     actionTimeout: 3000,
     bypassCSP: true,
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'on'
+    video: {
+      mode: 'on'
+    }
   },
-
+  reporter: [
+    ['list'],
+    ['html'],
+    ['junit', { outputFile: 'test-results/junit-report.xml'}]
+  ],
   /* Configure projects for major browsers */
   projects: [
     {

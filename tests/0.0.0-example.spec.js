@@ -22,7 +22,7 @@ const minutes = now.getMinutes()
 const testTime = `日期${month}${date}${hours}${minutes}`
 
 /** 本次測試參數 */
-let newRecord = false // true-新增 false-修改
+let newRecord = true // true-新增 false-修改
 
 /** Seetings */
 test.describe.configure({ mode: 'serial' })
@@ -68,7 +68,7 @@ test.describe('測試連線', () => {
             // 同意書
             const isExist = await checkIfExist(page, 'app-preview-dialog button.btn-success')
             if (isExist) {
-                pdfNextStepLoop(page)
+                await pdfNextStepLoop(page)
             }
         }
         else {
@@ -107,10 +107,7 @@ test.describe('測試連線', () => {
         await page.locator('input[formcontrolname="partTimeDetail"]').fill(testData.insured.partTimeDetail)
 
         // 正職職業代碼 A101
-        await Promise.all([
-            await page.locator('input[formcontrolname="jobInfoCareerFull"]').click()
-            , page.waitForResponse(res => res.url().includes('getSICInfo') && res.status() === 200)
-        ])
+        await page.locator('input[formcontrolname="jobInfoCareerFull"]').click()
         await page.waitForTimeout(shortSleep)
         await page.getByRole('dialog').locator('form div').filter({ hasText: /^職業查詢$/ }).click()
         await page.locator('input[name="jobCode"]').fill(testData.insured.jobCode)
@@ -120,10 +117,7 @@ test.describe('測試連線', () => {
         await page.locator('.modal-footer > .btn').click()
 
         // 間職職業代碼 A102
-        await Promise.all([
-            await page.locator('input[formcontrolname="parttimeJobOccupyFull"]').click()
-            , page.waitForResponse(res => res.url().includes('getSICInfo') && res.status() === 200)
-        ])
+        await page.locator('input[formcontrolname="parttimeJobOccupyFull"]').click()
         await page.waitForTimeout(shortSleep)
         await page.getByRole('dialog').locator('form div').filter({ hasText: /^職業查詢$/ }).click()
         await page.locator('input[name="jobCode"]').fill(testData.insured.partTimeJobCode)
@@ -182,6 +176,7 @@ test.describe('測試連線', () => {
 
         // 正職職業代碼 A101
         await page.locator('input[formcontrolname="jobOccupyFull"]').click()
+        await page.waitForTimeout(shortSleep)
         await page.locator('button.btn-info').first().click()
         await page.waitForTimeout(shortSleep)
         await page.locator('tbody > :nth-child(1) > .align-items-center > .form-check-input').click()
@@ -189,6 +184,7 @@ test.describe('測試連線', () => {
 
         // 間職職業代碼 A102
         await page.locator('input[formcontrolname="parttimeJobOccupyFull"]').click()
+        await page.waitForTimeout(shortSleep)
         await page.locator('button.btn-info').first().click()
         await page.waitForTimeout(shortSleep)
         await page.locator('tbody > :nth-child(1) > .align-items-center > .form-check-input').click()
@@ -258,6 +254,15 @@ test.describe('測試連線', () => {
 
         // 檢核儲存
         await clickSave(page)
+
+        // 等待系統讀取合約檔案
+        await page.waitForTimeout(longSleep)
+        
+        // 要保書填寫說明
+        let isExist = await checkIfExist(page, 'app-preview-dialog')
+        if (isExist) {
+            await pdfNextStepLoop(page)
+        }
     })
 
     test('詢問事項', async () => {
@@ -265,17 +270,8 @@ test.describe('測試連線', () => {
         if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
         if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
 
-        // 等待系統讀取合約檔案
-        await page.waitForTimeout(longSleep)
-
-        // 要保書填寫說明
-        let isExist = await checkIfExist(page, 'app-preview-dialog button.btn-success')
-        if (isExist) {
-            pdfNextStepLoop(page)
-        }
-
         // 身心障礙
-        isExist = await checkIfExist(page, 'input[formcontrolname="question_1"]')
+        let isExist = await checkIfExist(page, 'input[formcontrolname="question_1"]')
         if (isExist) {
             await page.locator(`input[formcontrolname="question_1"][value="${testData.noteAndInsuredRecord.question_1}"]`).click()
         }
@@ -660,7 +656,7 @@ test.describe('測試連線', () => {
         }
 
         // 檢核儲存
-        await clickTempSave(page)
+        await clickSave(page)
     })
     
     test('業務員核保報告書', async () => {
@@ -815,13 +811,13 @@ test.describe('測試連線', () => {
             await page.locator('div.page__content__btn.bottom-0.end-0 > button.btn-danger').click()
 
             // 如果有任何警告視窗,那就按
-            clickDialog(page, true)
+            await clickDialog(page, true)
 
             await page.waitForTimeout(longSleep)
 
             // 是否進入文件預覽
             // 如果有任何警告視窗,那就按
-            clickDialog(page, true)
+            await clickDialog(page, true)
         }
 
         await page.waitForResponse(res => res.url().includes('flow-step') && res.status() === 200)
@@ -840,7 +836,7 @@ test.describe('測試連線', () => {
                 const viewPdfBtn = await page.locator('tbody > tr > td > button.btn-outline-info').nth(i)
                 await Promise.all([
                     page.waitForResponse(res => res.url().includes('file') && res.status() === 200)
-                    , await viewPdfBtn.click()
+                    , viewPdfBtn.click()
                 ])
                 await page.waitForTimeout(shortSleep)
 
@@ -857,9 +853,8 @@ test.describe('測試連線', () => {
         await page.waitForTimeout(shortSleep)
         await Promise.all([
             page.waitForResponse(res => res.url().includes('flow-step') && res.status() === 200)
-            , page.locator('button.btn.btn-primary').click()
+            , page.locator('div.col-md-6 > button.btn.btn-primary').click()
         ])
-        await page.waitForTimeout(shortSleep)
     })
     
     test('電子簽名', async () => {
@@ -909,9 +904,8 @@ test.describe('測試連線', () => {
         await page.waitForTimeout(shortSleep)
         await Promise.all([
             page.waitForResponse(res => res.url().includes('flow-step') && res.status() === 200)
-            , page.locator('button.btn.btn-primary').click()
+            , page.locator('div.col-md-6 > button.btn.btn-primary').click()
         ])
-        await page.waitForTimeout(shortSleep)
     })
 
     test('上傳文件', async () => {
@@ -921,17 +915,15 @@ test.describe('測試連線', () => {
         await page.waitForTimeout(shortSleep)
         await Promise.all([
             page.waitForResponse(res => res.url().includes('flow-step') && res.status() === 200)
-            , page.locator('button.btn.btn-primary').click()
+            , page.locator('div.col-md-6 > button.btn.btn-primary').click()
         ])
-        await page.waitForTimeout(shortSleep)
     })
     
     test('確認投保-預覽', async () => {
         if (!(await mainStepIsMyTurn(page, 4))) { expect(true).toBe(true); return }
         // 檢查是否已做完
-        const targetPage = await page.locator('page__sidebar-items>div').nth(0)
-        const targetClasslist = await targetPage.getAttribute('class')
-        if (targetClasslist.includes('timeline-item--complete')) { expect(true).toBe(true); return }
+        const isDivExist = await page.locator('.timeline-item:nth-child(1).timeline-item--complete').isVisible()
+        if (isDivExist) { expect(true).toBe(true); return }
 
         // 預覽
         const pdfCounts = await page.locator('tbody > tr').count()
@@ -943,7 +935,7 @@ test.describe('測試連線', () => {
                 const viewPdfBtn = await page.locator('tbody > tr > td > button.btn-outline-info').nth(i)
                 await Promise.all([
                     page.waitForResponse(res => res.url().includes('file') && res.status() === 200)
-                    , await viewPdfBtn.click()
+                    , viewPdfBtn.click()
                 ])
                 await page.waitForTimeout(shortSleep)
 
@@ -958,16 +950,14 @@ test.describe('測試連線', () => {
 
         // 下一步
         await page.waitForTimeout(shortSleep)
-        await page.locator('button.btn.btn-primary').click()
-        await page.waitForTimeout(shortSleep)
+        await page.locator('div.col-md-6 > button.btn.btn-primary').click()
     })
     
     test('確認投保-簽名', async () => {
         if (!(await mainStepIsMyTurn(page, 4))) { expect(true).toBe(true); return }
         // 檢查是否已做完
-        const targetPage = await page.locator('page__sidebar-items>div').nth(1)
-        const targetClasslist = await targetPage.getAttribute('class')
-        if (targetClasslist.includes('timeline-item--complete')) { expect(true).toBe(true); return }
+        const isDivExist = await page.locator('.timeline-item:nth-child(2).timeline-item--complete').isVisible()
+        if (isDivExist) { expect(true).toBe(true); return }
 
         // 分頁
         const tabCounts = await page.locator('.mdc-tab').count()
@@ -1011,7 +1001,6 @@ test.describe('測試連線', () => {
         
         // 下一步
         await page.waitForTimeout(shortSleep)
-        await page.locator('button.btn.btn-primary').click()
-        await page.waitForTimeout(shortSleep)
+        await page.locator('div.col-md-6 > button.btn.btn-primary').click()
     })
 })
