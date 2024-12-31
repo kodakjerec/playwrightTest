@@ -1,5 +1,3 @@
-const { expect } = require('@playwright/test')
-
 /** 
  * PDF 自動按關閉或看完
  * @param {object} page
@@ -20,12 +18,15 @@ async function pdfNextStepLoop(page) {
             needClick = false;
         } else {
             // 檢查是否存在滾輪
-            isExist = await page.locator('app-preview-dialog > .modal-body').isVisible()
+            isExist = await page.locator('div.modal-body').isVisible()
             if (isExist) {
                 // Execute JavaScript to scroll to the bottom of the page
-                const scrollY = await page.evaluate(() => document.querySelector('app-preview-dialog > .modal-body').scrollHeight); // get the page height
-                await page.mouse.wheel(0, scrollY); // scroll to the bottom
-                
+                await page.evaluate(() => {
+                    const height = document.querySelector('div.modal-body').scrollHeight
+                    console.log(height)
+                    document.querySelector('div.modal-body').scrollTo({ left: 0, top: height, behavior: "smooth" });
+                }); // get the page height
+
                 await page.waitForTimeout(waitingTime)
 
                 // 有下一頁 or 同意
@@ -56,19 +57,17 @@ async function pdfNextStepLoop(page) {
 async function mainStepIsMyTurn(page, mainStep) {
     /*
      * 主要步驟
-     * 1-資料輸入
-     * 2-文件預覽
-     * 3-電子簽名
-     * 4-上傳文件
-     * 5-確認投保
+     * 0-資料輸入
+     * 1-文件預覽
+     * 2-電子簽名
+     * 3-上傳文件
+     * 4-確認投保
      */
-    const container = await page.locator('div.swiper-wrapper > div')
-    const counts = await container.count()
+    let nowMainStep = -1
+    for(let i=0; i<4; i++) {
+        const subDiv = await page.locator(`div.swiper-wrapper > div[data-swiper-slide-index="${i}"].step__item--last`)
+        const isExist = await subDiv.isVisible()
 
-    let nowMainStep = 0
-    for(let i=0; i<counts; i++) {
-        const subDiv = await container.nth(i)
-        const isExist = await checkIfExist(subDiv, '.step__item--last')
         if (isExist)
             nowMainStep = i
     }
@@ -99,13 +98,30 @@ async function subStepIsMyTurn(page, stepName) {
             // 檢查 icon 是否 display: visible
             const spanIcon = await btn.locator(`span.page__sidebar-icon`)
             if (await spanIcon.isVisible())
+                // 已檢核儲存
                 return false
-            else
+            else {
+                // 未檢核儲存
+                // 幫忙按下標籤定位
+                await btn.click()
                 return true
+            }
         }
     }
 
-    return true
+    // 找不到這個選項
+    return false
+}
+
+/** 
+ * 暫存儲存
+ * @param {object} page
+ * @returns {Promise<null>} 
+ *  */
+async function clickTempSave(page) {
+    await page.locator('.page__content__btn > button.btn-success').click()
+    // 如果有任何警告視窗,那就按
+    clickDialog(page, true)
 }
 
 /** 
@@ -116,9 +132,21 @@ async function subStepIsMyTurn(page, stepName) {
 async function clickSave(page) {
     await page.locator('.page__content__btn > button.btn-danger').click()
     // 如果有任何警告視窗,那就按
-    const isExist = await page.locator('app-warning-dialog button.btn-primary').isVisible()
+    clickDialog(page, true)
+}
+/**
+ * 有視窗出現就按
+ * @param {object} page 
+ * @param {boolean} isOK true-確認 false-取消
+ */
+async function clickDialog(page, isOK) {
+    const isExist = await page.locator('div.mibs-modal.modal-content').isVisible()
     if (isExist) {
-        await page.locator('app-warning-dialog button.btn-primary').click()
+        if (isOK) {
+            await page.locator('div.modal-footer button.btn-primary').click()
+        } else {
+            await page.locator('div.modal-footer button.btn-secondary').click()
+        }
     }
 }
 
@@ -135,9 +163,11 @@ async function checkIfExist(parent, selector) {
 }
 
 module.exports = { 
-    pdfNextStepLoop, 
-    clickSave, 
-    mainStepIsMyTurn, 
+    pdfNextStepLoop,
+    clickTempSave,
+    clickSave,
+    clickDialog,
+    mainStepIsMyTurn,
     subStepIsMyTurn,
     checkIfExist
 }

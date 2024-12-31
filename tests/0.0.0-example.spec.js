@@ -1,9 +1,17 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
-const { pdfNextStepLoop, clickSave, mainStepIsMyTurn, subStepIsMyTurn, checkIfExist } = require('./Commands')
+const { 
+    pdfNextStepLoop,
+    clickTempSave,
+    clickSave,
+    clickDialog,
+    mainStepIsMyTurn,
+    subStepIsMyTurn,
+    checkIfExist
+} = require('./Commands')
 
 import { solver } from '../support/CAPTCHAsolver'
-import testData from '../fixtures/0.0.0-sample.json'
+import testData from '../fixtures/1.0.0-UAT2.json'
 
 /** 本次測試時間 */
 const now = new Date()
@@ -34,22 +42,29 @@ const longSleep = 1500 // 長休息
 /** RUN */
 test.describe('測試連線', () => {
     test('登入', async () => {
-        await page.goto('/mbis/#/login?admin=TGL@70817744@tgl')
+        await page.goto(testData.loginUrl)
 
         await page.locator('#uname').fill(testData.userId)
         await page.locator('#pin').fill(testData.pin)
         await solver(page)
-        await page.getByRole('button', { name: '登入' }).click()
-        await page.waitForTimeout(longSleep)
+        await page.waitForTimeout(shortSleep)
+        await Promise.all([
+            page.waitForResponse(res => res.url().includes('login') && res.status() === 200)
+            , page.waitForResponse(res => res.url().includes('categorycode') && res.status() === 200)
+            , page.waitForResponse(res => res.url().includes('list') && res.status() === 200)
+            , page.getByRole('button', { name: '登入' }).click()
+        ])
+        
     })
 
     test('新增/修改', async () => {
         if (newRecord) {
+            // 新增
             await Promise.all([
                 page.waitForResponse(res => res.url().includes('getPdfDocument') && res.status() === 200)
                 , page.locator('.order-lg-1 > .card > .card-body > :nth-child(1) > :nth-child(1) > .me-2 > .row > a > .avatar-md > .avatar-title').click({ force: true })
-                , page.waitForTimeout(longSleep)
             ])
+            await page.waitForTimeout(shortSleep)
             // 同意書
             const isExist = await checkIfExist(page, 'app-preview-dialog button.btn-success')
             if (isExist) {
@@ -57,21 +72,22 @@ test.describe('測試連線', () => {
             }
         }
         else {
+            // 修改
             await Promise.all([
-                page.locator(':nth-child(1) > :nth-child(6) > :nth-child(1) > .ri-edit-2-line').click()
-                , page.waitForTimeout(longSleep)
+                page.waitForResponse(res => res.url().includes('verifyCase') && res.status() === 200)
+                , page.locator(':nth-child(1) > :nth-child(6) > :nth-child(1) > .ri-edit-2-line').click()
             ])
-
-            const isExist = await checkIfExist(page, 'app-normal-dialog button.btn-primary')
-            if (isExist) {
-                await page.locator('app-normal-dialog button.btn-primary').click()
-            }
+            await Promise.all([
+                page.waitForResponse(res => res.url().includes('query-one') && res.status() === 200)
+                , clickDialog(page, true)
+            ])
         }
     })
 
     test('被保險人', async () => {
+        const pageName = '被保險人'
         if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
-        if (!(await subStepIsMyTurn(page, '被保險人'))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
 
         await page.locator('input[formcontrolname="baseInfoName"]').fill(testData.insured.baseInfoName)
         await page.locator('input[formcontrolname="baseInfoGender"]').first().click()
@@ -136,12 +152,13 @@ test.describe('測試連線', () => {
         await page.locator('input[formcontrolname="emailDomain"]').fill(testData.insured.emailDomain)
 
         // 檢核儲存
-        clickSave(page)
+        await clickSave(page)
     })
 
     test('要保人', async () => {
+        const pageName = '要保人'
         if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
-        if (!(await subStepIsMyTurn(page, '要保人'))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
 
         // ***** 以下為要保人輸入 *****
         await page.locator('select[formcontrolname="relation"]').selectOption(testData.proposer.relation)
@@ -204,22 +221,24 @@ test.describe('測試連線', () => {
         await page.locator('.modal-footer > .btn-primary').click()
 
         // 檢核儲存
-        clickSave(page)
+        await clickSave(page)
     })
 
     test('風險屬性', async () => {
+        const pageName = '風險'
         if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
-        if (!(await subStepIsMyTurn(page, '風險'))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
 
         await page.locator('#isInvestN').check()
 
         // 檢核儲存
-        clickSave(page)
+        await clickSave(page)
     })
 
     test('保險種類', async () => {
+        const pageName = '保險種類'
         if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
-        if (!(await subStepIsMyTurn(page, '保險種類'))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
 
         // 等待系統讀取合約檔案
         await page.waitForTimeout(longSleep)
@@ -238,12 +257,13 @@ test.describe('測試連線', () => {
         await page.waitForTimeout(shortSleep)
 
         // 檢核儲存
-        clickSave(page)
+        await clickSave(page)
     })
 
     test('詢問事項', async () => {
+        const pageName = '詢問事項'
         if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
-        if (!(await subStepIsMyTurn(page, '詢問事項'))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
 
         // 等待系統讀取合約檔案
         await page.waitForTimeout(longSleep)
@@ -279,12 +299,13 @@ test.describe('測試連線', () => {
         }
 
         // 檢核儲存
-        clickSave(page)
+        await clickSave(page)
     })
 
     test('要保人帳戶', async () => {
+        const pageName = '要保人帳戶'
         if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
-        if (!(await subStepIsMyTurn(page, '要保人帳戶'))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
         
         let isExist = await checkIfExist(page, '.row > :nth-child(2) > .btn')
         if (isExist) {
@@ -298,26 +319,27 @@ test.describe('測試連線', () => {
         await page.locator('input[formcontrolname="account"]').fill(testData.bank.account)
 
         // 檢核儲存
-        clickSave(page)
+        await clickSave(page)
     })
 
     test('自動墊繳', async () => {
+        const pageName = '自動墊繳'
         if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
-        if (!(await subStepIsMyTurn(page, '自動墊繳'))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
         
         await page.locator('#autoPayment_left0').click()
         await page.locator('#payer_relations0_1').scrollIntoViewIfNeeded()
         await page.locator('#payer_relations0_1').click()
 
         // 檢核儲存
-        clickSave(page)
+        await clickSave(page)
     })
 
     test('受益人', async () => {
+        const pageName = '受益人'
         if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
-        if (!(await subStepIsMyTurn(page, '受益人'))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
         
-        let isExist = false
         const counts = await page.locator('.mat-mdc-tab-labels > div').count()
         for(let i=0; i<counts; i++) {
             const $tab = await page.locator('.mat-mdc-tab-labels > div').nth(i)
@@ -327,7 +349,7 @@ test.describe('測試連線', () => {
 
             // 身故保險金受益人
             const tagDeadName = `#cradio1dead${tagName}`
-            isExist = await checkIfExist(page, tagDeadName)
+            let isExist = await checkIfExist(page, tagDeadName)
             if (isExist) {
                 // 順位
                 await page.locator(tagDeadName).check()
@@ -395,12 +417,13 @@ test.describe('測試連線', () => {
         }
 
         // 檢核儲存
-        clickSave(page)
+        await clickSave(page)
     })
 
     test('告知事項', async () => {
+        const pageName = '告知事項'
         if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
-        if (!(await subStepIsMyTurn(page, '告知事項'))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
         
         let isExist = await checkIfExist(page, 'input[formcontrolname="height"]')
         if (isExist) {
@@ -434,6 +457,459 @@ test.describe('測試連線', () => {
         await page.locator('.modal-footer > :nth-child(2)').click()
 
         // 檢核儲存
-        clickSave(page)
+        await clickSave(page)
+    })
+
+    test('重要事項', async () => {
+        const pageName = '重要事項'
+        if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
+        
+        // 同意
+        await page.locator('div.justify-content-md-end > button').first().click()
+
+        // 檢核儲存
+        await clickSave(page)
+    })
+    
+    test('客戶投保權益 FATCA CRS', async () => {
+        const pageName = '客戶投保權益'
+        if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
+        
+        await page.locator('#rightOneY').check()
+        await page.locator('#rightTwoY').check()
+        await page.locator('#rightThreeY').check()
+        await page.locator('#rightFourY').check()
+        await page.locator('#rightFiveY').check()
+
+        // 法定代理人
+        let isExist = await checkIfExist(page, '#samePropser')
+        if (isExist) {
+            await page.locator('#samePropser').check()
+            await page.locator('input[formcontrolname="name"]').fill(testData.proposer.infoName)
+            await page.locator('input[formcontrolname="legalRepreRomanName"]').fill(testData.proposer.romanName)
+            await page.locator('.mat-datepicker-input').fill(testData.proposer.infoBirthday)
+            await page.locator('input[formcontrolname="legalRepresentativePersonId"]').fill(testData.proposer.infoPersonId)
+        }
+
+        // FATCA
+        await page.locator('#fatcaOptionB').check()
+        await page.locator('#fatcaBOption1').check()
+
+        // CRS
+        await page.locator('#crsOptionB').check()
+
+        // 檢核儲存
+        await clickSave(page)
+    })
+    
+    test('W-8BEN', async () => {
+        const pageName = 'W-8BEN'
+        if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
+        
+        await page.locator('input[formcontrolname="name"]').fill(testData.insured.baseInfoRomanName)
+        await page.locator('select[formcontrolname="nationality"]').selectOption(testData.insured.baseInfoNationality)
+        await page.locator('input[formcontrolname="addr"]').fill(testData.insured.engAddress)
+        await page.locator('input[formcontrolname="city"]').fill(testData.insured.engCity)
+        await page.locator('select[formcontrolname="country"]').selectOption(testData.insured.baseInfoNationality)
+        await page.locator('input[formcontrolname="diffAddr"]').fill(testData.insured.engAddress)
+        await page.locator('input[formcontrolname="diffCity"]').fill(testData.insured.engCity)
+        await page.locator('select[formcontrolname="diffCountry"]').selectOption(testData.insured.baseInfoNationality)
+        // 美國納稅人稅籍號碼
+        await page.locator('input[formcontrolname="taxNumbere"]').fill(testData.insured.taxNumbere)
+        await page.locator('input[formcontrolname="foreignTaxNumber"]').fill(testData.insured.foreignTaxNumber)
+        await page.locator('input[formcontrolname="referNumber"]').fill(testData.insured.referNumber)
+        await page.locator('.mat-datepicker-input').fill(testData.proposer.infoBirthday)
+        // 租稅協定優惠
+        await page.locator('select[formcontrolname="beneficialCountry"]').selectOption(testData.insured.baseInfoNationality)
+        await page.locator('input[formcontrolname="paragraph"]').fill(testData.insured.paragraph)
+        await page.locator('input[formcontrolname="rate"]').fill(testData.insured.rate)
+        await page.locator('input[formcontrolname="incomeType"]').fill(testData.insured.incomeType)
+        await page.locator('input[formcontrolname="conditions"]').fill(testData.insured.conditions)
+
+        // 檢核儲存
+        await clickSave(page)
+    })
+    
+    test('CRS自我證明', async () => {
+        const pageName = 'CRS自我證明'
+        if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
+        
+        // 自我證明表-個人 Self-Certification Form – Individua
+        await page.locator('.d-flex > .btn').click()
+        await page.locator('.modal-footer > .btn').click()
+
+        // 個人帳戶
+        await page.locator('input[formcontrolname="lastName"]').fill(testData.insured.lastName)
+        await page.locator('input[formcontrolname="firstName"]').fill(testData.insured.firstName)
+        await page.locator('input[formcontrolname="middleName"]').fill(testData.insured.middleName)
+        await page.locator('.mat-datepicker-input').fill(testData.proposer.infoBirthday)
+        // 現行地址
+        await page.locator('input[formcontrolname="currentAddress"]').type(testData.insured.engAddress)
+        await page.locator('input[formcontrolname="currentCity"]').fill(testData.insured.engCity)
+        await page.locator('select[formcontrolname="currentCountry"]').selectOption(testData.insured.baseInfoNationality)
+        await page.locator('input[formcontrolname="currentZip"]').fill(testData.insured.zip)
+        // 通訊地址
+        await page.locator('input[formcontrolname="address"]').type(testData.insured.engAddress)
+        await page.locator('input[formcontrolname="city"]').fill(testData.insured.engCity)
+        await page.locator('select[formcontrolname="country"]').selectOption(testData.insured.baseInfoNationality)
+        await page.locator('input[formcontrolname="zip"]').fill(testData.insured.zip)
+        // 出生地
+        await page.locator('input[formcontrolname="birthCity"]').fill(testData.insured.engCity)
+        await page.locator('select[formcontrolname="birthCountry"]').selectOption(testData.insured.baseInfoNationality)
+        // 稅務識別碼
+        await page.locator('.text-primary > .btn').click()
+        await page.locator('select[formcontrolname="liveCountry"]').selectOption(testData.insured.baseInfoNationality)
+        await page.locator('input[formcontrolname="tin"]').fill(testData.proposer.infoPersonId)
+        await page.locator('.modal-footer > .btn-info').click()
+
+        await page.locator('.text-primary > .btn').click()
+        await page.locator('select[formcontrolname="liveCountry"]').selectOption(testData.insured.liveCountry)
+        await page.locator('input[formcontrolname="tin"]').fill(testData.proposer.infoPersonId)
+        await page.locator('.modal-footer > .btn-info').click()
+
+        // 檢核儲存
+        await clickSave(page)
+    })
+    
+    test('審閱期聲明', async () => {
+        const pageName = '審閱期聲明'
+        if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
+        
+        const counts = await page.locator('.mat-mdc-tab-labels > div').count()
+        for(let i=0; i<counts; i++) {
+            const $tab = await page.locator('.mat-mdc-tab-labels > div').nth(i)
+            // 切換主約分頁
+            await $tab.click()
+            
+            await page.locator(':nth-child(1) > .form-check > .form-check-label').click()
+
+            // 審閱期至少三日
+            let today = new Date()
+            today.setDate(today.getDate() - 4)
+            let year = today.getFullYear()-1911
+            let month = (today.getMonth()+1).toString().padStart(2,'0')
+            let day = today.getDate().toString().padStart(2,'0')
+            await page.locator('.mat-datepicker-input').fill(year+month+day)
+        }
+
+        // 檢核儲存
+        await clickSave(page)
+    })
+    
+    test('招攬人員', async () => {
+        const pageName = '招攬人員'
+        if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
+        
+        await page.locator('input[formcontrolname="commiAgentCode2"]').fill(testData.agent.agentCode2)
+        await page.locator('label[for="assignRate2"]').click()
+        await page.waitForTimeout(shortSleep)
+
+        // 檢核儲存
+        await clickSave(page)
+    })
+    
+    test('財務狀況告知書', async () => {
+        const pageName = '財務狀況告知書'
+        if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
+        
+        let count = 0
+        const counts = await page.locator('.mat-mdc-tab-labels > div').count()
+        for(let i=0; i<counts; i++) {
+            const $tab = await page.locator('.mat-mdc-tab-labels > div').nth(i)
+            // 切換主約分頁
+            await $tab.click()
+
+            // 財務狀況
+            await page.locator('input[formcontrolname="yearIncome"]').fill(testData.financial.yearIncome)
+            await page.locator('input[formcontrolname="otherIncome"]').fill(testData.financial.otherIncome)
+            await page.locator('input[formcontrolname="familyIncome"]').fill(testData.financial.familyIncome)
+            await page.locator('input[formcontrolname="deposit"]').fill(testData.financial.deposit)
+            await page.locator('input[formcontrolname="bankName"]').fill(testData.financial.bankName)
+            await page.locator('input[formcontrolname="movableProperty"]').fill(testData.financial.movableProperty)
+            // 不動產
+            await page.locator('input[formcontrolname="estate"]').fill(testData.financial.estate)
+            await page.locator('input[formcontrolname="local"]').fill(testData.insured.engAddress)
+            await page.locator('input[formcontrolname="ping2"]').fill(testData.financial.ping)
+            // 負債
+            await page.locator('input[formcontrolname="borrowing"]').fill(testData.financial.borrowing)
+            await page.locator('input[formcontrolname="borrowType"]').fill(testData.financial.borrowType)
+
+            if (count === 1) {
+                await page.locator('input[formcontrolname="insuranceFeeSources1"]').check({ force: true })
+                await page.locator('input[formcontrolname="insuranceFeeSources3"]').check({ force: true })
+                await page.locator('input[formcontrolname="insuranceFeeSources5"]').check({ force: true })
+            }
+            
+            // 是否有辦理借款
+            let isExist = await checkIfExist(page, 'input[formcontrolname="hasLoan"][value="N"]')
+            if (isExist) {
+                await page.locator('input[formcontrolname="hasLoan"][value="N"]').scrollIntoViewIfNeeded()
+                await page.locator('input[formcontrolname="hasLoan"][value="N"]').check()
+                await page.locator('input[formcontrolname="hasTermination"][value="N"]').scrollIntoViewIfNeeded()
+                await page.locator('input[formcontrolname="hasTermination"][value="N"]').check()
+            }
+
+            count++
+        }
+
+        // 檢核儲存
+        await clickTempSave(page)
+    })
+    
+    test('業務員核保報告書', async () => {
+        const pageName = '業務員核保報告書'
+        if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
+        
+        await page.locator('input[formcontrolname="relationship"][value="4"]').check()
+        await page.locator('input[formcontrolname="applicantPurposeChoice1"]').check()
+        await page.locator('input[formcontrolname="selfApply"][value="0"]').check()
+        await page.locator('input[formcontrolname="specialRemart"][value="0"]').check()
+        // 被保險人財務狀況
+        await page.locator('input[formcontrolname="insuredWorkIncome"]').fill(testData.financial.yearIncome)
+        await page.locator('input[formcontrolname="insuredOtherIncome"]').fill(testData.financial.otherIncome)
+        await page.locator('input[formcontrolname="insuredHouseholdIncome"]').fill(testData.financial.familyIncome)
+        // 要保人財務狀況
+        await page.locator('input[formcontrolname="proposerWorkIncome"]').fill(testData.financial.yearIncome)
+        await page.locator('input[formcontrolname="proposerOtherIncome"]').fill(testData.financial.otherIncome)
+        await page.locator('input[formcontrolname="proposerHouseholdIncome"]').fill(testData.financial.familyIncome)
+
+        await page.locator('input[formcontrolname="spouseCareer"]').fill(testData.financial.spouseCareer)
+        // 家中主要經濟來源
+        await page.locator('input[formcontrolname="economicSources1"]').check()
+        // 保費來源
+        await page.locator('input[formcontrolname="insuranceFeeSources1"]').check({ force: true })
+        await page.locator('input[formcontrolname="insuranceFeeSources3"]').check({ force: true })
+        await page.locator('input[formcontrolname="insuranceFeeSources5"]').check({ force: true })
+        await page.locator('input[formcontrolname="reasonAndSourcePremiums"]').fill(testData.financial.reason)
+        await page.locator('input[formcontrolname="hasLoan"][value="N"]').check()
+        await page.locator('input[formcontrolname="hasTermination"][value="N"]').check()
+        // 負債
+        await page.locator('input[formcontrolname="hasLiabilities"][value="Y"]').check()
+        await page.locator('input[formcontrolname="proposerLiabilitiesType"]').fill(testData.financial.borrowType)
+        await page.locator('input[formcontrolname="proposerTotalLiabilities"]').fill(testData.financial.borrowing)
+        await page.locator('input[formcontrolname="insuredLiabilitiesType"]').fill(testData.financial.borrowType)
+        await page.locator('input[formcontrolname="insuredTotalLiabilities"]').fill(testData.financial.borrowing)
+        // 其他商業保險
+        await page.locator('input[formcontrolname="proposerOtherInsuranceProducts"][value="0"]').check()
+        await page.locator('input[formcontrolname="insuredOtherInsuranceProducts"][value="0"]').check()
+        //    要保人是否對於本次購買商品之保障內容或給付項目完全不關心
+        await page.locator('input[formcontrolname="proposerHighlyAttention"][value="1"]').check()
+        await page.locator('input[formcontrolname="notAssignReason"]').type('NoNoNo')
+
+        await page.locator('input[formcontrolname="notifyAgree"][value="0"]').check()
+        if (testData.noteAndInsuredRecord.question_1==="Y") {
+            await page.locator('input[formcontrolname="insuredHealthAbnormal"][value="1"]').check()
+            await page.locator('input[formcontrolname="insuredHealthAbnormalState"]').fill("身心障礙")
+        } else {
+            await page.locator('input[formcontrolname="insuredHealthAbnormal"][value="0"]').check()
+        }
+        await page.locator('input[formcontrolname="militaryService"][value="1"]').check()
+
+        await page.locator('input[formcontrolname="clerkStatement1"][value="0"]').check()
+        await page.locator('input[formcontrolname="clerkStatement2"][value="0"]').check()
+        await page.locator('input[formcontrolname="clerkStatement3"][value="0"]').check()
+        await page.locator('input[formcontrolname="clerkStatement4"][value="0"]').check()
+        await page.locator('input[formcontrolname="clerkStatement5"][value="0"]').check()
+
+        await page.locator('input[formcontrolname="proposerTeleAccessTime1"]').check()
+        await page.locator('input[formcontrolname="proposerTeleAccessNo"]').fill(testData.insured.phoneNumberNight)
+        await page.locator('input[formcontrolname="insuredTeleAccessTime1"]').check()
+        await page.locator('input[formcontrolname="insuredTeleAccessNo"]').fill(testData.insured.phoneNumberNight)
+        await page.locator('input[formcontrolname="legalRepresentativeAccessNo"]').fill(testData.insured.phoneNumberNight)
+
+        // 檢核儲存
+        await clickSave(page)
+    })
+    
+    test('疾病問卷', async () => {
+        const pageName = '疾病問卷'
+        if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
+        if (!(await subStepIsMyTurn(page, pageName))) { expect(true).toBe(true); return }
+        
+        // 新增
+        await page.locator('.card-body > .btn').click()
+        await page.locator('select[name="questionSelect"]').selectOption("Q-0001")
+        await page.locator('select[name="insuredSelect"]').selectOption(testData.insured.baseInfoName)
+        await page.locator('button[name="next"]').click()
+
+        // 填寫
+        // 1.
+        await page.locator('input[formcontrolname="occurrenceYear"]').fill("111")
+        await page.locator('input[formcontrolname="occurrenceMonth"]').fill("5")
+        await page.locator('input[formcontrolname="occurrenceDay"]').fill("21")
+        await page.locator('textarea[formcontrolname="cause"]').fill("這就是發生原因")
+        // 2.
+        await page.locator('input[formcontrolname="haveAnyConditions"][value="false"]').check()
+        await page.locator('input[formcontrolname="conditions"]').nth(0).check()
+        await page.locator('input[formcontrolname="conditions"]').nth(1).check()
+        await page.locator('input[formcontrolname="conditions"]').nth(2).check()
+        await page.locator('input[formcontrolname="conditions"]').nth(3).check()
+        await page.locator('input[formcontrolname="lossConsciousness"][value="false"]').check()
+        await page.locator('textarea[formcontrolname="coma"]').fill("昏迷了十年")
+        await page.locator('input[formcontrolname="conditions"]').nth(4).check()
+        await page.locator('textarea[formcontrolname="fractureSite"]').fill("全身粉粹性骨折")
+        // 3.
+        await page.locator('input[formcontrolname="hospitalized"][value="false"]').check()
+        await page.locator('textarea[formcontrolname="hospitalizedDay"]').fill("11/05/21, 30天")
+        await page.locator('input[formcontrolname="continuousTreatment"][value="false"]').check()
+        await page.locator('input[formcontrolname="continuousTreatment"][value="true"]').check()
+        await page.locator('input[formcontrolname="lastClinicYear"]').fill("111")
+        await page.locator('input[formcontrolname="lastClinicMonth"]').fill("5")
+        await page.locator('input[formcontrolname="lastClinicDay"]').fill("21")
+        await page.locator('input[formcontrolname="surgicalTreatment"][value="false"]').check()
+        await page.locator('textarea[formcontrolname="surgicalName"]').fill("改造手術")
+        await page.locator('input[formcontrolname="implantation"][value="false"]').check()
+        await page.locator('input[formcontrolname="takeOutYear"]').fill("111")
+        await page.locator('input[formcontrolname="takeOutMonth"]').type("5")
+        await page.locator('input[formcontrolname="takeOutDay"]').fill("21")
+        await page.locator('input[formcontrolname="haveSuggestion"][value="false"]').check()
+        await page.locator('textarea[formcontrolname="suggestion"]').fill("我沒有任何建議")
+        // 4.
+        await page.locator('input[formcontrolname="defect"][value="false"]').check()
+        await page.locator('textarea[formcontrolname="defectDesc"]').fill("受傷有任何機能喪失或缺損")
+        // 5.
+        await page.locator('input[formcontrolname="haveSequelae"][value="false"]').check()
+        await page.locator('input[formcontrolname="sequelae"]').nth(0).check()
+        await page.locator('input[formcontrolname="sequelae"]').nth(1).check()
+        await page.locator('input[formcontrolname="sequelae"]').nth(2).check()
+        await page.locator('input[formcontrolname="sequelae"]').nth(3).check()
+        await page.locator('input[formcontrolname="sequelae"]').nth(4).check()
+        await page.locator('input[formcontrolname="sequelae"]').nth(5).check()
+        await page.locator('input[formcontrolname="sequelae"]').nth(6).check()
+        await page.locator('input[formcontrolname="sequelae"]').nth(7).check()
+        await page.locator('textarea[formcontrolname="canNotMoveDesc"]').fill("我不能移動")
+        await page.locator('input[formcontrolname="sequelae"]').nth(8).check()
+        await page.locator('textarea[formcontrolname="sequelaeOther"]').fill("這是其他選項")
+        // 6.
+        await page.locator('input[formcontrolname="cured"][value="false"]').check()
+        await page.locator('textarea[formcontrolname="unhealedDesc"]').fill("上為痊癒")
+        // 7.
+        await page.locator('textarea[formcontrolname="hospitalName"]').fill("臺大醫院")
+        await page.locator('input[formcontrolname="hospitalLocation"]').fill("台北市公館區")
+        await page.locator('textarea[formcontrolname="medicalRecordNumber"]').fill("RX-78-G3")
+
+        await page.locator('button[name="next"]').click()
+
+        // 檢核儲存
+        await clickSave(page)
+    })
+
+    test('前往文件預覽', async () => {
+        if (!(await mainStepIsMyTurn(page, 0))) { expect(true).toBe(true); return }
+
+        await page.waitForTimeout(shortSleep)
+
+        let isExist = await checkIfExist(page, 'app-yes-no-dialog button.btn-primary')
+        if (isExist) {
+            await page.locator('app-yes-no-dialog button.btn-primary').click()
+        } else {
+            // 主動按下 檢核儲存
+            await page.locator('div.page__content__btn.bottom-0.end-0 > button.btn-danger').click()
+
+            // 如果有任何警告視窗,那就按
+            clickDialog(page, true)
+
+            await page.waitForTimeout(longSleep)
+
+            // 是否進入文件預覽
+            // 如果有任何警告視窗,那就按
+            clickDialog(page, true)
+        }
+
+        await page.waitForResponse(res => res.url().includes('flow-step') && res.status() === 200)
+        await page.waitForTimeout(shortSleep)
+    })
+
+    test('文件預覽', async () => {
+        if (!(await mainStepIsMyTurn(page, 1))) { expect(true).toBe(true); return }
+
+        const pdfCounts = await page.locator('tbody > tr').count()
+        for(let i=0;i<pdfCounts;i++) {
+            const pdfViewedTime = await page.locator('tbody > tr').nth(i).locator('td').nth(2).textContent()
+            if (pdfViewedTime.trim()==='') {
+                // 按下按鈕
+                const viewPdfBtn = await page.locator('tbody > tr > td > button.btn-outline-info').nth(i)
+                await Promise.all([
+                    page.waitForResponse(res => res.url().includes('file') && res.status() === 200)
+                    , await viewPdfBtn.click()
+                ])
+                await page.waitForTimeout(shortSleep)
+
+                await pdfNextStepLoop(page)
+                
+                await page.waitForTimeout(shortSleep)
+
+                // 是否預覽下一份文件, 選否
+                await clickDialog(page, false)
+            }
+        }
+
+        // 下一步
+        await page.waitForTimeout(shortSleep)
+        await Promise.all([
+            page.waitForResponse(res => res.url().includes('flow-step') && res.status() === 200)
+            , page.locator('button.btn.btn-primary').click()
+        ])
+        await page.waitForTimeout(shortSleep)
+    })
+    
+    test('電子簽名', async () => {
+        if (!(await mainStepIsMyTurn(page, 2))) { expect(true).toBe(true); return }
+
+        // 分頁
+        const tabCounts = await page.locator('.mdc-tab').count()
+        for (let i=0;i<tabCounts;i++) {
+            const tab = await page.locator('.mdc-tab').nth(i)
+            await tab.click()
+
+            // 每個簽名
+            const signaturesBody = await page.locator('tbody')
+            const signatureCounts = await signaturesBody.locator('div.signature__img').count()
+            for (let j=0;j<signatureCounts;j++) {
+                const divSignature = await signaturesBody.locator('div.signature__img').nth(j)
+                const isDivExist = await divSignature.isVisible()
+                if (isDivExist) {
+                    // 有icon表示簽名過不再簽
+                    const isSignatured = await divSignature.locator('div.signature__icon').isVisible()
+                    if (!isSignatured) {
+                        await divSignature.click()
+
+                        // 開始簽名
+                        await page.waitForTimeout(shortSleep)
+                        const pad = await page.locator('canvas.signature-pad__pad').boundingBox()
+                        let nowX = pad.width/2
+                        let nowY = pad.height/2
+                        for (let k=0;k<5;k++) {
+                            await page.mouse.move(nowX, nowY)
+                            await page.mouse.down()
+                            nowX = pad.x + Math.random()*pad.width
+                            nowY = pad.y + Math.random()*pad.height
+                            await page.mouse.move(nowX, nowY, { steps: 10})
+                            await page.mouse.up()
+                        }
+
+                        // 送出
+                        await page.locator('.signature-pad__footer-btn--confirm').click()
+                        await page.waitForTimeout(shortSleep)
+                    }
+                }
+            }
+        }
+
+        // 下一步
+        await page.waitForTimeout(shortSleep)
+        await Promise.all([
+            page.waitForResponse(res => res.url().includes('flow-step') && res.status() === 200)
+            , page.locator('button.btn.btn-primary').click()
+        ])
+        await page.waitForTimeout(shortSleep)
     })
 })

@@ -1,8 +1,8 @@
 {
     "__comments__": "測試用, 與傳給後端內容一定有不同",
-    "loginUrl": "https://mpos.transglobe.com.tw/mbis/#/login?admin=TGL@70817744@tgl",
-    "userId": "003371",
-    "pin": "Sp1qaz2wsx",
+    "loginUrl": "http://10.67.67.108/mbis2/#/login",
+    "userId": "A134967300",
+    "pin": "123456",
     "insured": {
         "tid": "CAB96F0743C000018D7812D0154018D3",
         "baseInfoName": "自動測試",
