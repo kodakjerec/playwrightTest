@@ -6,6 +6,12 @@ pipeline {
         }
     }
 
+    environment {
+        HOME = '.'
+        USERNAME = 'kodakjerec'
+        PASSWORD = 'ru03dk4286'
+    }
+
     stages {
         stage('Install Dependencies') {
             steps {
