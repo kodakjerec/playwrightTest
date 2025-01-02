@@ -15,10 +15,10 @@ import testData from '../fixtures/0.0.0-sample.json'
 
 /** 本次測試時間 */
 const now = new Date()
-const month = now.getMonth() + 1
-const date = now.getDate()
-const hours = now.getHours()
-const minutes = now.getMinutes()
+const month = (now.getMonth() + 1).toString().padStart(2, '0')
+const date = now.getDate().toString().padStart(2, '0')
+const hours = now.getHours().toString().padStart(2, '0')
+const minutes = now.getMinutes().toString().padStart(2, '0')
 const testTime = `日期${month}${date}${hours}${minutes}`
 
 /** 本次測試參數 */

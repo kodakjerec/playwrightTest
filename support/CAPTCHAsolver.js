@@ -4,9 +4,15 @@
  */
 
 import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
 export async function solver(page) {
-  const model_text = fs.readFileSync('support/cbl-js/model.txt', 'utf8')
-  const code = fs.readFileSync('support/cbl-js/CBL.min.js', 'utf8')
+  const model_text = fs.readFileSync(path.join(__dirname, 'cbl-js', 'model.txt'), 'utf8')
+  const code = fs.readFileSync(path.join(__dirname, 'cbl-js', 'CBL.min.js'), 'utf8')
   await page.addScriptTag({content: code})
   
   const answer = await page.evaluate(async ({model_text}) => {
