@@ -3,12 +3,10 @@
  * 不能砍
  */
 
-import fs from 'fs'
-import path from 'path'
+import * as model_text from './cbl-js/model.txt'
+import * as code from './cbl-js/CBL.min.js'
 
 export async function solver(page) {
-  const model_text = fs.readFileSync(path.join(__dirname, 'cbl-js', 'model.txt'), 'utf8')
-  const code = fs.readFileSync(path.join(__dirname, 'cbl-js', 'CBL.min.js'), 'utf8')
   await page.addScriptTag({content: code})
   
   const answer = await page.evaluate(async ({model_text}) => {
