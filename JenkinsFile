@@ -42,7 +42,7 @@ pipeline {
                 allowMissing: false,
                 alwaysLinkToLastBuild: true,
                 keepAll: true,
-                reportDir: 'playwright-report',
+                reportDir: 'test-results',
                 reportFiles: 'index.html',
                 reportName: 'Playwright Report'
             ])
