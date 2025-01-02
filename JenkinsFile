@@ -40,7 +40,8 @@ pipeline {
                 keepAll: true,
                 reportDir: 'test-results',
                 reportFiles: 'index.html',
-                reportName: 'Playwright Report'
+                reportName: 'Playwright Report',
+                sandbox: 'allow-scripts allow-same-origin'
             ])
         }
     }
