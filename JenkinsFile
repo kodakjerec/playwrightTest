@@ -38,9 +38,9 @@ pipeline {
                 allowMissing: false,
                 alwaysLinkToLastBuild: true,
                 keepAll: true,
-                reportDir: 'test-results',
+                reportDir: 'playwright-report',
                 reportFiles: 'index.html',
-                reportName: 'Playwright_Report',
+                reportName: 'Playwright Report',
                 sandbox: 'allow-scripts allow-same-origin'
             ])
         }
