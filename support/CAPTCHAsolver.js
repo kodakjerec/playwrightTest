@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 
 const model_text = fs.readFileSync(path.resolve('./support/cbl-js/model.txt'), 'utf8');
-const code = fs.readFileSync(path.resolve('./support/cbl-js/CBL.min.js'), 'utf8');
+const code = fs.readFileSync(path.resolve('./support/cbl-js/cbl.min.js'), 'utf8');
 
 export async function solver(page) {
   await page.addScriptTag({content: code})
