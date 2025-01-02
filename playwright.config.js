@@ -34,7 +34,8 @@ module.exports = defineConfig({
   },
   reporter: [
     ['list'],
-    ['html', { open: 'never', outputFolder: './test-results' }],
+    ['html'],
+    ['junit', { outputFile: 'test-results/junit-report.xml'}]
   ],
   /* Configure projects for major browsers */
   projects: [
